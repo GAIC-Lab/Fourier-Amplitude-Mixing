@@ -1,0 +1,10 @@
+# Experiments in the paper used Ultralytics 8.4.70.
+# Install the PyTorch build matching your CUDA version from https://pytorch.org first.
+ultralytics==8.4.70
+torch
+opencv-python
+numpy
+pandas
+scipy
+scikit-learn
+tqdm

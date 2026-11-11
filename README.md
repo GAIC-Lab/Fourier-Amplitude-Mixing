@@ -37,7 +37,7 @@ The experiments in the paper used Ultralytics 8.4.70 with an NVIDIA GeForce RTX 
 
 ## Data
 
-The dataset is available on Zenodo: **[Zenodo DOI link]**
+The dataset is available on Zenodo: [https://doi.org/10.5281/zenodo.24131781](https://doi.org/10.5281/zenodo.24131781)
 
 It contains the 544 dashcam images and polygon annotations originally published in Ehsan and Chen (2025) on [Roboflow Universe](https://universe.roboflow.com/ehsaanullah/free-parking-space-detection-e7hqm/dataset/9) under the CC BY 4.0 license, together with the day/night labels and the fold assignments used in the paper. Download it and place it in `dataset/`:
 

@@ -80,7 +80,7 @@ def print_statistics(stats, total_images):
 
 if __name__ == "__main__":
     # Update this path to the directory containing your YOLO .txt label files
-    LABEL_DIR = "dataset/parking/all/labels" 
+    LABEL_DIR = "dataset/labels" 
     
     # Ensure the order matches your dataset.yaml
     CLASS_NAMES = ['slot_empty', 'slot_occ', 'space_free', 'no_park']

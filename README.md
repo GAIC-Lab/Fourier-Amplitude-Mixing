@@ -13,7 +13,7 @@ The study evaluates **Fourier amplitude mixing (FAM)**, an intra-dataset variant
 | File | Purpose |
 |---|---|
 | `utils_dataset_stats.py` | Class statistics of the full dataset (instances, images per class, mean area) |
-| `utils_kfold_split.py` | Stratified 5-fold split, stratified on the presence of `slot_empty` (`random_state=42`) |
+| `utils_kfold_split.py` | Creates the five folds in YOLO format, recreating the paper's folds from `folds.csv` |
 | `utils_check_kfold_stats.py` | Class statistics of every fold and split → `kfold_dataset_stats.csv` |
 | `utils_generate_fds.py` | Generates the FAM training sets (`*_FDS_1_1`, `*_FDS_1_3`, `*_FDS_1_5`) for each fold |
 | `train_yolo_kfold.py` | Trains a YOLO segmentation model on all five folds of one dataset variant |
@@ -39,25 +39,27 @@ The experiments in the paper used Ultralytics 8.4.70 with an NVIDIA GeForce RTX 
 
 The dataset is available on Zenodo: **[Zenodo DOI link]**
 
-It contains the 544 dashcam images and polygon annotations originally published in Ehsan and Chen (2025), together with the per-image day/night labels and the stratified fold assignments used in the paper. Annotations are in YOLO segmentation format with four classes:
-
-| ID | Class | Description |
-|---|---|---|
-| 0 | `slot_empty` | Unoccupied designated car space enclosed by a white painted box |
-| 1 | `slot_occ` | Occupied designated car space |
-| 2 | `space_free` | Kerb with a solid white edge line but no box, where parking is generally permitted |
-| 3 | `no_park` | No-parking zone marked by red or yellow kerb lines |
-
-Place the images and labels as follows:
+It contains the 544 dashcam images and polygon annotations originally published in Ehsan and Chen (2025) on [Roboflow Universe](https://universe.roboflow.com/ehsaanullah/free-parking-space-detection-e7hqm/dataset/9) under the CC BY 4.0 license, together with the day/night labels and the fold assignments used in the paper. Download it and place it in `dataset/`:
 
 ```
 dataset/
-└── parking/all/
-    ├── images/
-    └── labels/
+├── images/        # 544 images (*.jpg)
+├── labels/        # YOLO segmentation labels (*.txt), same base names as the images
+├── day.txt        # names of the 353 daytime images, one per line
+├── night.txt      # names of the 191 night-time images, one per line
+└── folds.csv      # validation fold (1-5) of every image, as used in the paper
 ```
 
-The scripts below create the remaining folders:
+The labels use four classes. The paper uses short names; the original Roboflow export uses longer names for the same class IDs:
+
+| ID | Name in the paper | Roboflow name | Description |
+|---|---|---|---|
+| 0 | `slot_empty` | `car-parking-available` | Unoccupied designated car space enclosed by a white painted box |
+| 1 | `slot_occ` | `car-parking-occupied` | Occupied designated car space |
+| 2 | `space_free` | `free-space-parking` | Kerb with a solid white edge line but no box, where parking is generally permitted |
+| 3 | `no_park` | `restricted-area` | No-parking zone marked by red or yellow kerb lines |
+
+The scripts below create the training folders:
 
 ```
 dataset/
@@ -66,8 +68,6 @@ dataset/
 ├── dataset_kfold_FDS_1_3/fold_{1..5}/...     # FAM 1:3
 └── dataset_kfold_FDS_1_5/fold_{1..5}/...     # FAM 1:5
 ```
-
-The data-preparation scripts use the paths set at the bottom of each file; edit them there if your layout differs.
 
 ---
 
@@ -85,10 +85,12 @@ Prints the number of instances, the number of images containing each class, and 
 
 ```bash
 python utils_kfold_split.py
-python utils_check_kfold_stats.py      # optional: per-fold statistics -> kfold_dataset_stats.csv
+python utils_check_kfold_stats.py      # optional: per-fold class statistics -> kfold_dataset_stats.csv
 ```
 
-The split is stratified on whether an image contains `slot_empty`, the rarest class, so each validation fold contains 14 of the 70 images with this class. With `random_state=42` and the same input images, the split is reproducible. Each fold's `dataset.yaml` is written automatically.
+This copies the images and labels into the five folds in YOLO format and writes each fold's `dataset.yaml`. With `dataset/folds.csv` present, it recreates **exactly the folds used in the paper**. Without it, the images are split with stratified 5-fold cross-validation on the presence of `slot_empty`, the rarest class (`random_state=42`, set with `--seed`), and the resulting assignment is saved as `folds.csv`.
+
+The script checks that every image has a label file and appears in exactly one of `day.txt` and `night.txt`. It writes `fold_summary.csv` with the number of images, `slot_empty` images, and daytime and night-time images in each fold and split. Run `python utils_kfold_split.py --help` for all options.
 
 ### 3. Generate the FAM training sets
 
@@ -96,15 +98,18 @@ The split is stratified on whether an image contains `slot_empty`, the rarest cl
 python utils_generate_fds.py
 ```
 
-For every fold and ratio (1:1, 1:3, 1:5), this copies the original training and validation images and adds 1, 3, or 5 augmented images per training image. Settings used in the paper:
+For every fold and ratio (1:1, 1:3, 1:5), this copies the original training and validation images, adds 1, 3, or 5 augmented images per training image, and writes a `dataset.yaml` pointing to the new folders. The defaults are the settings used in the paper:
 
-- style images drawn uniformly at random, with replacement, from the **same fold's training set** (validation images are never used);
-- blending coefficient α ~ U(0.2, 0.8), drawn per augmented image;
-- low-frequency region: a square of (2b+1) × (2b+1) frequencies around the zero frequency, with b = ⌊β · min(H, W)⌋ and β = 0.01;
-- validation images copied unchanged;
-- annotations of the original image reused, because FAM preserves the image phase and therefore object positions and shapes.
+| Option | Default | Meaning |
+|---|---|---|
+| `--ratios` | `1 3 5` | Augmented images per original training image |
+| `--alpha_min`, `--alpha_max` | `0.2`, `0.8` | Range of the blending coefficient α, drawn per augmented image |
+| `--beta` | `0.01` | Size of the low-frequency region: a square of (2b+1) × (2b+1) frequencies with b = ⌊β · min(H, W)⌋ |
+| `--seed` | `-1` | Random seed; `-1` leaves the augmentation unseeded |
 
-The augmentation does not use a fixed random seed, so regenerated images will differ slightly from those used in the paper.
+Style images are drawn uniformly at random, with replacement, from the **same fold's training set**, so validation images are never used. The annotations of each original image are reused for its augmented copies, because FAM keeps the image phase and therefore the positions and shapes of the parking regions. The parameters of each run are saved as `args.json` in the output folder.
+
+The augmentation in the paper was not seeded, so regenerated images will differ slightly from those used in the paper. Use `--seed` (for example `--seed 0`) to make future runs reproducible.
 
 ### 4. Train
 
@@ -192,9 +197,7 @@ Please also cite the original dataset paper:
 
 ## License
 
-[License]
-
-The dataset is distributed under the license of the original dataset; see the Zenodo record.
+The dataset is distributed under the [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license of the original Roboflow dataset; please cite Ehsan and Chen (2025) when using it.
 
 ## Acknowledgements
 

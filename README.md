@@ -198,7 +198,3 @@ Please also cite the original dataset paper:
 ## License
 
 The dataset is distributed under the [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license of the original Roboflow dataset; please cite Ehsan and Chen (2025) when using it.
-
-## Acknowledgements
-
-This work was supported by the National Science and Technology Council, Taiwan, R.O.C., under grants NSTC-115-2221-E-324-012- and NSTC-114-2637-E-324-003-.
